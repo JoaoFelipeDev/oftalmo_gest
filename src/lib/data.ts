@@ -84,3 +84,57 @@ export async function getPaymentMethodDistribution() {
   }
   return data;
 }
+
+type ConsultaComNomes = {
+  id: string;
+  data_consulta: string;
+  procedimento: string;
+  pacientes: { nome: string }[] | null;
+  medicos: { nome: string }[] | null;
+};
+
+export async function getConsultationsForCalendar() {
+  const { data, error } = await supabase
+    .from('consultas')
+    .select(`
+      id,
+      data_consulta,
+      procedimento,
+      pacientes ( nome ),
+      medicos ( nome )
+    `);
+  
+  if (error) {
+    console.error("Erro ao buscar consultas:", error.message);
+    return [];
+  }
+
+  if (!data) {
+    return [];
+  }
+
+  // Dizemos ao TypeScript que 'data' é uma lista do nosso tipo 'ConsultaComNomes'
+  const typedData = data as ConsultaComNomes[];
+
+  return typedData.map(item => {
+    const startTime = new Date(item.data_consulta);
+    const endTime = new Date(startTime.getTime() + 30 * 60000); 
+    
+    // --- LÓGICA DE ACESSO CORRIGIDA ---
+    // Verificamos se a lista existe e tem pelo menos um item antes de acessar o nome.
+    const patientName = (item.pacientes && item.pacientes.length > 0)
+      ? item.pacientes[0].nome
+      : 'Paciente';
+    
+    const doctorName = (item.medicos && item.medicos.length > 0)
+      ? item.medicos[0].nome
+      : undefined;
+
+    return {
+      title: `${item.procedimento} - ${patientName}`,
+      start: startTime,
+      end: endTime,
+      resource: doctorName,
+    };
+  });
+}
