@@ -47,6 +47,8 @@ export function DonutChartCard({ data }: DonutChartCardProps) {
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "0.5rem"
                     }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 'bold' }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
                   />
                   <Pie
                     data={chartData}

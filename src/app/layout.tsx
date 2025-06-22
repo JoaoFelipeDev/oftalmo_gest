@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { ThemeProvider } from '@/components/providers/theme-provider';
+import { Toaster } from '@/components/ui/sonner'; // 1. IMPORTE O TOASTER
+
 const fontSans = Inter({ 
   subsets: ['latin'],
   variable: '--font-sans', 
@@ -30,13 +32,13 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
-         <ThemeProvider
+        <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <div className="grid min-h-screen w-full grid-cols-[80px_1fr]">
+          <div className="grid min-h-screen w-full md:grid-cols-[80px_1fr]">
             <Sidebar />
             <div className="flex flex-col">
               <AppHeader />
@@ -45,6 +47,9 @@ export default function RootLayout({
               </main>
             </div>
           </div>
+          
+          {/* 2. ADICIONE O TOASTER AQUI */}
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>

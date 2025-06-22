@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/lib/data.ts
 
 import { supabase } from './supabase-client';
@@ -93,19 +95,19 @@ type ConsultaComNomes = {
   medicos: { nome: string }[] | null;
 };
 
-export async function getConsultationsForCalendar() {
+export async function getConsultationsForCalendar(): Promise<CalendarEvent[]> {
   const { data, error } = await supabase
     .from('consultas')
     .select(`
       id,
       data_consulta,
       procedimento,
-      pacientes ( nome ),
-      medicos ( nome )
+      medico_id,
+      pacientes ( nome )
     `);
   
   if (error) {
-    console.error("Erro ao buscar consultas:", error.message);
+    console.error("Erro ao buscar consultas para a agenda:", error.message);
     return [];
   }
 
@@ -113,28 +115,139 @@ export async function getConsultationsForCalendar() {
     return [];
   }
 
-  // Dizemos ao TypeScript que 'data' é uma lista do nosso tipo 'ConsultaComNomes'
-  const typedData = data as ConsultaComNomes[];
-
-  return typedData.map(item => {
+  const events = data.map(item => {
+    // --- A CORREÇÃO ESTÁ AQUI ---
+    // Agora usamos new Date() diretamente. Como o banco de dados não tem mais
+    // informação de fuso horário, o JavaScript vai interpretar a data
+    // como sendo no fuso horário local do servidor/ambiente, que é o comportamento que queremos.
     const startTime = new Date(item.data_consulta);
     const endTime = new Date(startTime.getTime() + 30 * 60000); 
     
-    // --- LÓGICA DE ACESSO CORRIGIDA ---
-    // Verificamos se a lista existe e tem pelo menos um item antes de acessar o nome.
-    const patientName = (item.pacientes && item.pacientes.length > 0)
-      ? item.pacientes[0].nome
-      : 'Paciente';
-    
-    const doctorName = (item.medicos && item.medicos.length > 0)
-      ? item.medicos[0].nome
-      : undefined;
+    const patient = item.pacientes as any;
 
     return {
-      title: `${item.procedimento} - ${patientName}`,
+      title: `${item.procedimento} - ${patient?.nome || 'Paciente'}`,
       start: startTime,
       end: endTime,
-      resource: doctorName,
+      resourceId: item.medico_id,
     };
   });
+
+  return events;
 }
+export interface CalendarEvent {
+  title: string;
+  start: Date;
+  end: Date;
+  resourceId?: string; // ID do médico para o calendário saber em qual coluna colocar o evento
+}
+export interface Resource {
+  id: string;
+  title: string;
+}
+
+
+
+export async function getDoctorsAsResources(): Promise<Resource[]> {
+  const { data, error } = await supabase.from('medicos').select('id, nome');
+
+  if (error) {
+    console.error("Erro ao buscar médicos:", error.message);
+    return [];
+  }
+  
+  return data ? data.map(medico => ({ id: medico.id, title: medico.nome })) : [];
+}
+
+export interface Patient {
+  id: string;
+  nome: string;
+  cpf: string | null;
+  telefone: string | null; // Adicionando o campo telefone
+  data_nascimento: string | null;
+}
+
+export type PatientConsultation = {
+  id: string;
+  data_consulta: string;
+  procedimento: string;
+  status: string;
+  medicos: { nome: string } | null;
+}
+
+// O tipo de retorno agora inclui o paciente E sua lista de consultas
+export type PatientDetails = Patient & {
+  consultas: PatientConsultation[];
+}
+
+export async function getPaginatedPatients(options: {
+  query?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ patients: Patient[], pageCount: number }> {
+  const { query, page = 1, limit = 10 } = options;
+
+  let supabaseQuery = supabase
+    .from('pacientes')
+    .select('id, nome, cpf, telefone, data_nascimento', { count: 'exact' });
+
+  // Adiciona o filtro de busca se houver uma query
+  if (query) {
+    supabaseQuery = supabaseQuery.ilike('nome', `%${query}%`);
+  }
+
+  // Lógica da paginação
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+  supabaseQuery = supabaseQuery.range(from, to);
+
+  const { data, error, count } = await supabaseQuery;
+
+  if (error) {
+    console.error("Erro ao buscar pacientes:", error.message);
+    return { patients: [], pageCount: 0 };
+  }
+
+  const pageCount = Math.ceil((count ?? 0) / limit);
+
+  return { patients: data || [], pageCount };
+}
+
+export async function searchPatientsByName(query: string): Promise<{ id: string; nome: string }[]> {
+  if (!query || query.length < 2) {
+    return [];
+  }
+  
+  const { data, error } = await supabase
+    .from('pacientes')
+    .select('id, nome')
+    .ilike('nome', `%${query}%`) // ilike é case-insensitive
+    .limit(5); // Limitamos a 5 resultados
+
+  if (error) {
+    console.error("Erro ao buscar pacientes por nome:", error.message);
+    return [];
+  }
+
+  return data || [];
+}
+export async function getPatientDetails(id: string): Promise<PatientDetails | null> {
+  // O select agora busca '*' (todos os campos) da tabela pacientes E também
+  // todos os campos da tabela de consultas relacionadas, incluindo o nome do médico.
+  const { data, error } = await supabase
+    .from('pacientes')
+    .select(`
+      *,
+      consultas (id, data_consulta, procedimento, status, medicos ( nome ))
+    `)
+    .eq('id', id)
+    .single(); // .single() garante que esperamos apenas um resultado
+
+  if (error) {
+    console.error("Erro ao buscar detalhes do paciente:", error.message);
+    return null;
+  }
+
+  return data as PatientDetails;
+}
+
