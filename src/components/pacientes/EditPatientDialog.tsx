@@ -25,7 +25,7 @@ export function EditPatientDialog({ patient, children }: EditPatientDialogProps)
           <DialogTitle>Editar Paciente</DialogTitle>
         </DialogHeader>
         {/* Passamos os dados do paciente para o formulário */}
-        <PatientForm initialData={patient} onSuccess={() => setIsOpen(false)} />
+        <PatientForm initialData={patient} onSuccess={() => setIsOpen(false)} formId={''} />
       </DialogContent>
     </Dialog>
   );
