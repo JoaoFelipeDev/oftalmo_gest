@@ -25,6 +25,7 @@ import { ptBR } from 'date-fns/locale';
 const consultationSchema = z.object({
   data_consulta: z.date({ required_error: 'A data da consulta é obrigatória.' }),
   paciente_id: z.string({ required_error: 'Selecione um paciente.' }),
+  horario: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido (use HH:MM)." }),
   medico_id: z.string({ required_error: 'Selecione um médico.' }),
   procedimento: z.string().min(3, { message: 'Descreva o procedimento.' }),
   valor: z.string().optional(),
@@ -51,6 +52,7 @@ export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) 
     const formData = new FormData();
     formData.append('data_consulta', data.data_consulta.toISOString());
     formData.append('paciente_id', data.paciente_id);
+    formData.append('horario', data.horario);
     formData.append('medico_id', data.medico_id);
     formData.append('procedimento', data.procedimento);
     formData.append('status', data.status);
@@ -108,44 +110,44 @@ export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) 
           )}
         />
         
-        <FormField
-          control={form.control}
-          name="data_consulta"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Data da Consulta</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP", { locale: ptBR })
-                      ) : (
-                        <span>Escolha uma data</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+       <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="data_consulta"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Data</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="horario"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Hora</FormLabel>
+                <FormControl>
+                  <Input type="time" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}

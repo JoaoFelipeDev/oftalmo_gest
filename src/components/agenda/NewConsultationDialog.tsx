@@ -24,7 +24,7 @@ interface NewConsultationDialogProps {
 export function NewConsultationDialog({ medicos }: NewConsultationDialogProps) {
    const [isOpen, setIsOpen] = useState(false);
   return (
-    <Dialog>
+     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       {/* O DialogTrigger contém o nosso botão, que fica sempre visível */}
       <DialogTrigger asChild>
         <Button>

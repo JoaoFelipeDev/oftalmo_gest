@@ -19,7 +19,7 @@ export function AppHeader() {
       <div className="container flex h-16 items-center justify-between max-w-full px-6">
         {/* Placeholder para o nome da clínica ou breadcrumbs */}
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Centro Oftalmológico Santa Brígida</h2>
+          <h2 className="text-lg font-semibold text-foreground">Clinica Teste</h2>
         </div>
         
         <div className="flex items-center space-x-4">
@@ -38,7 +38,7 @@ export function AppHeader() {
                   <AvatarFallback>GM</AvatarFallback>
                 </Avatar>
                 <div className="text-left hidden md:block">
-                  <p className="text-sm font-medium">Dr. Geraldo Cosme</p>
+                  <p className="text-sm font-medium">Admin Master</p>
                   <p className="text-xs text-muted-foreground">Admin</p>
                 </div>
               </button>
