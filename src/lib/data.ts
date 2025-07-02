@@ -29,7 +29,7 @@ export async function getTotalRevenue(): Promise<number> {
   const { data, error } = await supabase
     .from('consultas')
     .select('valor');
-    console.log("--- DEBUG: CONTAGEM RECEBIDA DO SUPABASE:", data);
+  console.log("--- DEBUG: CONTAGEM RECEBIDA DO SUPABASE:", data);
   if (error) {
     console.error("Erro ao buscar faturamento:", error.message);
     return 0;
@@ -42,7 +42,7 @@ export async function getTotalRevenue(): Promise<number> {
 
   // Soma todos os valores da coluna 'valor' usando o método reduce
   const total = data.reduce((acc, consulta) => acc + (consulta.valor || 0), 0);
-  
+
   return total;
 }
 
@@ -105,7 +105,7 @@ export async function getConsultationsForCalendar(): Promise<CalendarEvent[]> {
       medico_id,
       pacientes ( nome )
     `);
-  
+
   if (error) {
     console.error("Erro ao buscar consultas para a agenda:", error.message);
     return [];
@@ -121,8 +121,8 @@ export async function getConsultationsForCalendar(): Promise<CalendarEvent[]> {
     // informação de fuso horário, o JavaScript vai interpretar a data
     // como sendo no fuso horário local do servidor/ambiente, que é o comportamento que queremos.
     const startTime = new Date(item.data_consulta);
-    const endTime = new Date(startTime.getTime() + 30 * 60000); 
-    
+    const endTime = new Date(startTime.getTime() + 30 * 60000);
+
     const patient = item.pacientes as any;
 
     return {
@@ -155,7 +155,7 @@ export async function getDoctorsAsResources(): Promise<Resource[]> {
     console.error("Erro ao buscar médicos:", error.message);
     return [];
   }
-  
+
   return data ? data.map(medico => ({ id: medico.id, title: medico.nome })) : [];
 }
 
@@ -217,7 +217,7 @@ export async function searchPatientsByName(query: string): Promise<{ id: string;
   if (!query || query.length < 2) {
     return [];
   }
-  
+
   const { data, error } = await supabase
     .from('pacientes')
     .select('id, nome')
@@ -249,5 +249,25 @@ export async function getPatientDetails(id: string): Promise<PatientDetails | nu
   }
 
   return data as PatientDetails;
+}
+
+export interface Convenio {
+  id: string;
+  nome: string;
+  ativo: boolean;
+}
+
+export async function getConvenios(): Promise<Convenio[]> {
+  const { data, error } = await supabase
+    .from('convenios')
+    .select('id, nome, ativo')
+    .order('nome', { ascending: true });
+
+  if (error) {
+    console.error("Erro ao buscar convênios:", error.message);
+    return [];
+  }
+
+  return data || [];
 }
 
