@@ -22,14 +22,13 @@ const patientSchema = z.object({
 
 type PatientFormValues = z.infer<typeof patientSchema>;
 
-// O formulário agora recebe um 'formId'
+// O formulário agora NÃO recebe mais um 'formId'
 interface PatientFormProps {
-  formId: string;
   initialData?: Patient;
   onSuccess: () => void;
 }
 
-export function PatientForm({ formId, initialData, onSuccess }: PatientFormProps) {
+export function PatientForm({ initialData, onSuccess }: PatientFormProps) {
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientSchema),
     defaultValues: initialData
@@ -53,8 +52,12 @@ export function PatientForm({ formId, initialData, onSuccess }: PatientFormProps
     if (data.telefone) formData.append('telefone', data.telefone);
     if (data.data_nascimento) formData.append('data_nascimento', data.data_nascimento);
 
-    const result = isEditing ? await updatePatient(formData) : await createPatient(formData);
+    // Remover id do formData se for string vazia
+    if (formData.get('id') === '') formData.delete('id');
 
+    const result = isEditing ? await updatePatient(formData) : await createPatient(formData);
+    console.log('isEditing:', isEditing);
+    console.log('Form submission result:', result);
     if (result?.success) {
       toast.success(isEditing ? 'Paciente atualizado!' : 'Paciente criado com sucesso!');
       onSuccess();
@@ -65,8 +68,7 @@ export function PatientForm({ formId, initialData, onSuccess }: PatientFormProps
 
   return (
     <Form {...form}>
-      {/* A tag <form> agora tem o ID que veio das props */}
-      <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-4">
         <FormField control={form.control} name="nome" render={({ field }) => (<FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input placeholder="Nome do paciente" {...field} /></FormControl><FormMessage /></FormItem>)} />
         <FormField
           control={form.control}
@@ -118,8 +120,11 @@ export function PatientForm({ formId, initialData, onSuccess }: PatientFormProps
           )}
         />
         <FormField control={form.control} name="data_nascimento" render={({ field }) => ( <FormItem><FormLabel>Data de Nascimento (Opcional)</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )} />
-        {/* O BOTÃO DE SUBMIT FOI REMOVIDO DE DENTRO DO FORMULÁRIO */}
-      </form>
+        {/* O botão de submit agora chama handleSubmit diretamente */}
+        <button type="button" className="w-full btn btn-primary" onClick={form.handleSubmit(onSubmit)}>
+          {isEditing ? 'Salvar Alterações' : 'Salvar Paciente'}
+        </button>
+      </div>
     </Form>
   );
 }

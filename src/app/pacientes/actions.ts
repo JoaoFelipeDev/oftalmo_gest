@@ -5,18 +5,26 @@ import { supabase } from '@/lib/supabase-client';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-// 1. Adicione 'telefone' ao nosso schema de validação
-const patientSchema = z.object({
+// Schema para criação (sem id)
+const patientCreateSchema = z.object({
+  nome: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
+  cpf: z.string().optional(),
+  data_nascimento: z.string().optional(),
+  telefone: z.string().optional(),
+});
+
+// Schema para edição (com id)
+const patientUpdateSchema = z.object({
   id: z.string().uuid(),
   nome: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
   cpf: z.string().optional(),
   data_nascimento: z.string().optional(),
-  telefone: z.string().optional(), // <-- Adicionado
+  telefone: z.string().optional(),
 });
 
 export async function createPatient(formData: FormData) {
   const rawData = Object.fromEntries(formData.entries());
-  const validatedFields = patientSchema.safeParse(rawData);
+  const validatedFields = patientCreateSchema.safeParse(rawData);
 
   if (!validatedFields.success) {
     return { errors: validatedFields.error.flatten().fieldErrors };
@@ -43,9 +51,7 @@ export async function createPatient(formData: FormData) {
 
 export async function updatePatient(formData: FormData) {
   const rawData = Object.fromEntries(formData.entries());
-
-  // Usamos .omit({ id: true }) para não validar o ID, pois ele não vem do form
-  const validatedFields = patientSchema.safeParse(rawData);
+  const validatedFields = patientUpdateSchema.safeParse(rawData);
 
   if (!validatedFields.success) {
     return { errors: validatedFields.error.flatten().fieldErrors };

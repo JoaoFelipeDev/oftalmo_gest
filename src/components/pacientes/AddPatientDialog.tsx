@@ -4,11 +4,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription
 } from '@/components/ui/dialog';
 import { PatientForm } from './PatientForm';
 import { PlusCircle } from 'lucide-react';
 import { type Patient } from '@/lib/data';
+import { createPortal } from 'react-dom';
 
 interface AddPatientDialogProps {
   isOpen?: boolean;
@@ -24,18 +25,13 @@ export function AddPatientDialog({
   children,
 }: AddPatientDialogProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
-
   const isControlled = controlledIsOpen !== undefined && controlledOnOpenChange !== undefined;
-  const isEditing = !!patientToEdit;
-  
-  const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
-  const onOpenChange = isControlled ? controlledOnOpenChange : setInternalIsOpen;
-  
-  // ID único para nosso formulário, para ser acionado pelo botão no rodapé
-  const formId = isEditing ? `edit-patient-form-${patientToEdit?.id}` : "add-patient-form";
+  const open = isControlled ? controlledIsOpen : internalIsOpen;
+  const handleOpenChange = isControlled ? controlledOnOpenChange : setInternalIsOpen;
 
+  // O trigger (botão) sempre aparece, o conteúdo do modal vai para o portal
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {children ? children : (
           <Button>
@@ -44,27 +40,21 @@ export function AddPatientDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar Paciente' : 'Cadastrar Novo Paciente'}</DialogTitle>
-          <DialogDescription>
-            Preencha os dados abaixo.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <PatientForm 
-          formId={formId} 
-          onSuccess={() => onOpenChange(false)}
-          initialData={patientToEdit}
-        />
-        
-        {/* BOTÃO DE SALVAR AGORA FICA AQUI, NO RODAPÉ, CONECTADO PELO ID */}
-        <DialogFooter>
-          <Button type="submit" form={formId}>
-            {isEditing ? 'Salvar Alterações' : 'Salvar Paciente'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+      {typeof window !== 'undefined' && open && createPortal(
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Cadastrar Novo Paciente</DialogTitle>
+            <DialogDescription>
+              Preencha os dados abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          <PatientForm 
+            onSuccess={() => handleOpenChange(false)}
+            initialData={patientToEdit}
+          />
+        </DialogContent>,
+        document.body
+      )}
     </Dialog>
   );
 }

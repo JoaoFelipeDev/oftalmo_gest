@@ -10,7 +10,8 @@ import {
   Wallet,
   Package,
   FileText,
-  FlaskConical
+  FlaskConical,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -45,6 +46,7 @@ export function Sidebar() {
     { href: "/estoque", icon: Package, label: "Estoque" },
     { href: "/laudos", icon: FileText, label: "Laudos" },
     { href: "/exames", icon: FlaskConical, label: "Exames" },
+    { href: "/configuracoes/convenios", icon: Settings, label: "Ajustes" },
   ];
 
   return (
