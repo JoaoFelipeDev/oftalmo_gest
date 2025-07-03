@@ -1,52 +1,90 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/agenda/ConsultationForm.tsx
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { createConsultation } from './actions';
 import { PatientSearchCombobox } from '@/components/pacientes/PatientSearchCombobox';
-import { type Resource } from '@/lib/data';
+import { getConveniosByPatientId, type PatientConvenio, type Resource } from '@/lib/data';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl,  FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Schema de validação para os dados da consulta
+// Schema de validação
 const consultationSchema = z.object({
   data_consulta: z.date({ required_error: 'A data da consulta é obrigatória.' }),
   paciente_id: z.string({ required_error: 'Selecione um paciente.' }),
-  horario: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido (use HH:MM)." }),
+  horario: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: 'Formato de hora inválido (use HH:MM).' }),
   medico_id: z.string({ required_error: 'Selecione um médico.' }),
   procedimento: z.string().min(3, { message: 'Descreva o procedimento.' }),
   valor: z.string().optional(),
-status: z.string(),
+  status: z.string(),
+  paciente_convenio_id: z.string().optional(), // novo campo
 });
 
 type ConsultationFormValues = z.infer<typeof consultationSchema>;
 
-// O formulário agora recebe a lista de médicos e uma função de sucesso
 interface ConsultationFormProps {
   medicos: Resource[];
   onSuccess?: () => void;
 }
 
 export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) {
-  const form = useForm<ConsultationFormValues, any, ConsultationFormValues>({
+  const form = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationSchema),
-      defaultValues: {
+    defaultValues: {
       status: 'Agendada',
     },
   });
+
+  const [patientConvenios, setPatientConvenios] = React.useState<PatientConvenio[]>([]);
+  const [isLoadingConvenios, setIsLoadingConvenios] = React.useState(false);
+  const selectedPatientId = form.watch('paciente_id');
+
+  React.useEffect(() => {
+    if (!selectedPatientId) {
+      setPatientConvenios([]);
+      return;
+    }
+
+    const fetchConvenios = async () => {
+      setIsLoadingConvenios(true);
+      const data = await getConveniosByPatientId(selectedPatientId);
+      setPatientConvenios(data);
+      setIsLoadingConvenios(false);
+    };
+
+    fetchConvenios();
+  }, [selectedPatientId]);
 
   const onSubmit = async (data: ConsultationFormValues) => {
     const formData = new FormData();
@@ -57,12 +95,13 @@ export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) 
     formData.append('procedimento', data.procedimento);
     formData.append('status', data.status);
     if (data.valor) formData.append('valor', data.valor);
+    if (data.paciente_convenio_id) formData.append('paciente_convenio_id', data.paciente_convenio_id);
 
     const result = await createConsultation(formData);
 
     if (result?.success) {
       toast.success('Consulta agendada com sucesso!');
-      if (onSuccess) onSuccess(); // Fecha o modal se o agendamento for bem-sucedido
+      if (onSuccess) onSuccess();
     } else {
       toast.error(result?.error || 'Ocorreu um erro desconhecido.');
     }
@@ -77,11 +116,45 @@ export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) 
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <FormLabel>Paciente</FormLabel>
-              <PatientSearchCombobox 
-                onPatientSelect={(patientId) => {
-                  field.onChange(patientId); // Atualiza o valor do formulário com o ID do paciente
-                }} 
+              <PatientSearchCombobox
+                onPatientSelect={(patientId) => field.onChange(patientId)}
               />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Campo de Convênio */}
+        <FormField
+          control={form.control}
+          name="paciente_convenio_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Convênio</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                disabled={!selectedPatientId || isLoadingConvenios}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={isLoadingConvenios ? 'Carregando...' : 'Selecione o convênio'} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {patientConvenios.length > 0 ? (
+                    patientConvenios.map(pc => (
+                      <SelectItem key={pc.id} value={pc.id}>
+                        {pc.convenios?.nome} - {pc.plano} ({pc.numero_matricula})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      Nenhum convênio cadastrado para este paciente.
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -101,7 +174,9 @@ export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) 
                 </FormControl>
                 <SelectContent>
                   {medicos.map(medico => (
-                    <SelectItem key={medico.id} value={medico.id}>{medico.title}</SelectItem>
+                    <SelectItem key={medico.id} value={medico.id}>
+                      {medico.title}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -109,8 +184,8 @@ export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) 
             </FormItem>
           )}
         />
-        
-       <div className="grid grid-cols-2 gap-4">
+
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="data_consulta"
@@ -120,7 +195,7 @@ export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) 
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
-                      <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                      <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                         {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
@@ -134,6 +209,7 @@ export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) 
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="horario"
@@ -155,7 +231,9 @@ export function ConsultationForm({ medicos, onSuccess }: ConsultationFormProps) 
           render={({ field }) => (
             <FormItem>
               <FormLabel>Procedimento</FormLabel>
-              <FormControl><Input placeholder="Ex: Consulta de rotina" {...field} /></FormControl>
+              <FormControl>
+                <Input placeholder="Ex: Consulta de rotina" {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

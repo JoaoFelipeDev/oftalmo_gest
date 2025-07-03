@@ -17,26 +17,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import React from 'react';
-// 1. Importe o nosso componente de Dialog
 import { AddPatientDialog } from '@/components/pacientes/AddPatientDialog';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   pageCount: number;
+  showControls?: boolean; // ← nova prop opcional
 }
 
 export function PatientDataTable<TData, TValue>({
   columns,
   data,
   pageCount,
+  showControls = true, // ← valor padrão
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const currentPage = Number(searchParams.get('page')) || 1;
-  
+
   const table = useReactTable({
     data,
     columns,
@@ -66,21 +67,22 @@ export function PatientDataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="flex items-center justify-between py-4">
-        <Input
-          placeholder="Filtrar por nome..."
-          defaultValue={searchParams.get('query') || ''}
-          onChange={(event) => {
-            const handler = setTimeout(() => {
-              router.push(`${pathname}?${createQueryString('query', event.target.value)}`);
-            }, 500);
-            return () => clearTimeout(handler);
-          }}
-          className="max-w-sm"
-        />
-        {/* 2. Substituímos o <Button> estático pelo nosso componente <AddPatientDialog /> */}
-        <AddPatientDialog />
-      </div>
+      {showControls && (
+        <div className="flex items-center justify-between py-4">
+          <Input
+            placeholder="Filtrar por nome..."
+            defaultValue={searchParams.get('query') || ''}
+            onChange={(event) => {
+              const handler = setTimeout(() => {
+                router.push(`${pathname}?${createQueryString('query', event.target.value)}`);
+              }, 500);
+              return () => clearTimeout(handler);
+            }}
+            className="max-w-sm"
+          />
+          <AddPatientDialog />
+        </div>
+      )}
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>

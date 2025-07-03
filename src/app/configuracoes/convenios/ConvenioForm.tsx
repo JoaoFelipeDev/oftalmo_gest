@@ -2,40 +2,48 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
-import { createConvenio } from './actions';
-import { useEffect } from 'react';
+import { type Convenio } from '@/lib/data';
+import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { createConvenio, updateConvenio } from './actions';
 
-// Um pequeno componente para o botão, para que ele possa saber o status do formulário
-function SubmitButton() {
+function SubmitButton({ isEditing }: { isEditing: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? 'Adicionando...' : 'Adicionar Convênio'}
+      {pending ? (isEditing ? 'Salvando...' : 'Criando...') : (isEditing ? 'Salvar Alterações' : 'Adicionar Convênio')}
     </Button>
   );
 }
 
-export function ConvenioForm() {
-    const initialState: { error: string | null; success: string | null } = { error: null, success: null };
-  const [state, dispatch] = useFormState(createConvenio, initialState);
+interface ConvenioFormProps {
+  convenio?: Convenio;
+  onSuccess: () => void;
+}
+
+export function ConvenioForm({ convenio, onSuccess }: ConvenioFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const action = convenio ? updateConvenio : createConvenio;
+  const [state, dispatch] = useFormState(action, { error: '', success: null });
 
   useEffect(() => {
     if (state?.success) {
       toast.success(state.success);
+      onSuccess();
     }
     if (state?.error) {
       toast.error(state.error);
     }
-  }, [state]);
+  }, [state, onSuccess]);
 
   return (
-    <form action={dispatch} className="mb-6 flex items-center gap-4 p-4 border rounded-lg bg-card">
-      <Input name="nome" placeholder="Nome do novo convênio" required className="flex-1" />
-      <input type="hidden" name="ativo" value="true" />
-      <SubmitButton />
+    <form ref={formRef} action={dispatch} className="flex flex-col gap-4">
+      {convenio && <input type="hidden" name="id" value={convenio.id} />}
+      <Input name="nome" placeholder="Nome do convênio" defaultValue={convenio?.nome} required />
+      <input type="hidden" name="ativo" value={String(convenio?.ativo ?? true)} />
+      <SubmitButton isEditing={!!convenio} />
     </form>
   );
 }
